@@ -8,10 +8,11 @@
  */
 function getDbConnection() {
     // Database configuration
-    $host = 'localhost';  // Your database host
-    $username = 'root';  // Your database username
-    $password = '';  // Your database password
-    $database = 'stocks';  // Your database name
+    $config = require 'config.php';
+    $host = $config['db_host'];  // Your database host
+    $username = $config['db_user'];  // Your database username
+    $password = $config['db_pass'];  // Your database password
+    $database = $config['db_name'];  // Your database name
 
     // Create a new mysqli object and connect to the database
     $conn = new mysqli($host, $username, $password, $database);
