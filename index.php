@@ -98,6 +98,7 @@
             <a href="sell_stock.php">Sell Stock</a>
             <a href="view_stocks.php">View Stocks</a>
             <a href="view_transactions.php">View Transactions</a>
+            <a href="create_stock.php">Create Stock</a>
         </nav>
     </div>
 </body>

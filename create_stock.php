@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buy Stock</title>
+    <title>Create Stock</title>
     <style>
         /* Global Styles */
         * {
@@ -57,7 +57,7 @@
             margin-bottom: 5px;
         }
 
-        select,
+        input[type="text"],
         input[type="number"] {
             padding: 10px;
             border: 1px solid #ddd;
@@ -83,6 +83,13 @@
         /* Message Styles */
         .message {
             color: #28a745;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        /* Error Message Styles */
+        .error-message {
+            color: #dc3545;
             font-size: 16px;
             margin-bottom: 15px;
         }
@@ -121,7 +128,7 @@
 </head>
 <body>
     <header>
-        <h1>Buy Stock</h1>
+        <h1>Create Stock</h1>
     </header>
 
     <div class="container">
@@ -133,21 +140,10 @@
         include 'connection.php';
 
         // Initialize variables
-        $quantity = 0;
+        $stock_name = '';
+        $quantity = '';
         $message = '';
-        $stocks = [];
-
-        // Fetch stocks for the dropdown
-        $conn = getDbConnection();
-        $sql = "SELECT stock_name FROM stocks";
-        $result = $conn->query($sql);
-
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $stocks[] = $row['stock_name'];
-            }
-        }
-        closeDbConnection($conn);
+        $error_message = '';
 
         // Handle form submission
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -155,48 +151,35 @@
             $stock_name = htmlspecialchars($_POST['stock_name']);
             $quantity = (int)$_POST['quantity'];
 
-            // Establish database connection
-            $conn = getDbConnection();
-
-            // Check if the stock exists
-            $stmt = $conn->prepare("SELECT quantity FROM stocks WHERE stock_name = ?");
-            $stmt->bind_param("s", $stock_name);
-            $stmt->execute();
-            $result = $stmt->get_result();
-
-            if ($result->num_rows > 0) {
-                // Stock exists, update the quantity
-                $row = $result->fetch_assoc();
-                $new_quantity = $row['quantity'] + $quantity;
-
-                $stmt = $conn->prepare("UPDATE stocks SET quantity = ? WHERE stock_name = ?");
-                $stmt->bind_param("is", $new_quantity, $stock_name);
-                $stmt->execute();
-
-                // Record the transaction
-                $stmt = $conn->prepare("INSERT INTO transactions (type, stock_name, quantity) VALUES (?, ?, ?)");
-                $type = 'Buy';
-                $stmt->bind_param("ssi", $type, $stock_name, $quantity);
-                $stmt->execute();
-
-                $message = 'Stock purchased successfully!';
+            // Validate input
+            if (empty($stock_name) || $quantity < 0) {
+                $error_message = 'Please provide a valid stock name and a non-negative quantity.';
             } else {
-                // Stock does not exist, insert a new record
-                $stmt = $conn->prepare("INSERT INTO stocks (stock_name, quantity) VALUES (?, ?)");
-                $stmt->bind_param("si", $stock_name, $quantity);
-                $stmt->execute();
+                // Establish database connection
+                $conn = getDbConnection();
 
-                // Record the transaction
-                $stmt = $conn->prepare("INSERT INTO transactions (type, stock_name, quantity) VALUES (?, ?, ?)");
-                $type = 'Buy';
-                $stmt->bind_param("ssi", $type, $stock_name, $quantity);
+                // Check if the stock already exists
+                $stmt = $conn->prepare("SELECT stock_name FROM stocks WHERE stock_name = ?");
+                $stmt->bind_param("s", $stock_name);
                 $stmt->execute();
+                $result = $stmt->get_result();
 
-                $message = 'Stock purchased and added successfully!';
+                if ($result->num_rows > 0) {
+                    $error_message = 'Stock already exists.';
+                } else {
+                    // Insert the new stock
+                    $stmt = $conn->prepare("INSERT INTO stocks (stock_name, quantity) VALUES (?, ?)");
+                    $stmt->bind_param("si", $stock_name, $quantity);
+                    if ($stmt->execute()) {
+                        $message = 'Stock created successfully!';
+                    } else {
+                        $error_message = 'Error creating stock.';
+                    }
+                }
+
+                // Close the database connection
+                closeDbConnection($conn);
             }
-
-            // Close the database connection
-            closeDbConnection($conn);
         }
         ?>
 
@@ -205,22 +188,20 @@
             <p class="message"><?php echo $message; ?></p>
         <?php endif; ?>
 
-        <!-- Form to submit stock purchase -->
-        <form action="buy_stock.php" method="post">
-            <label for="stock_name">Select Stock:</label>
-            <select id="stock_name" name="stock_name" required>
-                <option value="" disabled selected>Select a stock</option>
-                <?php foreach ($stocks as $stock): ?>
-                    <option value="<?php echo htmlspecialchars($stock); ?>">
-                        <?php echo htmlspecialchars($stock); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+        <!-- Display the error message -->
+        <?php if ($error_message): ?>
+            <p class="error-message"><?php echo $error_message; ?></p>
+        <?php endif; ?>
+
+        <!-- Form to create a new stock -->
+        <form action="create_stock.php" method="post">
+            <label for="stock_name">Stock Name:</label>
+            <input type="text" id="stock_name" name="stock_name" value="<?php echo htmlspecialchars($stock_name); ?>" required>
             <br>
-            <label for="quantity">Quantity:</label>
-            <input type="number" id="quantity" name="quantity" value="" required>
+            <label for="quantity">Initial Quantity:</label>
+            <input type="number" id="quantity" name="quantity" value="<?php echo htmlspecialchars($quantity); ?>" required>
             <br>
-            <input type="submit" value="Buy Stock">
+            <input type="submit" value="Create Stock">
         </form>
     </div>
 </body>
