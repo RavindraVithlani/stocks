@@ -6,16 +6,15 @@
     <title>Sell Stock</title>
     <style>
         /* Global Styles */
-        *{
-            margin:0;
-            padding:0;
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -143,11 +142,11 @@
         // Initialize variables
         $message = '';
         $stocks = [];
-        $error_message ='';
+        $error_message = '';
 
         // Fetch stocks for the dropdown
         $conn = getDbConnection();
-        $sql = "SELECT stock_name, quantity FROM stocks";
+        $sql = "SELECT stock_name, quantity, rack_number FROM stocks";
         $result = $conn->query($sql);
 
         if ($result->num_rows > 0) {
@@ -167,7 +166,7 @@
             $conn = getDbConnection();
 
             // Check stock availability
-            $stmt = $conn->prepare("SELECT quantity FROM stocks WHERE stock_name = ?");
+            $stmt = $conn->prepare("SELECT quantity, rack_number FROM stocks WHERE stock_name = ?");
             $stmt->bind_param("s", $stock_name);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -175,12 +174,18 @@
             if ($result->num_rows > 0) {
                 $row = $result->fetch_assoc();
                 $available_quantity = $row['quantity'];
+                $rack_number = $row['rack_number'];
 
                 if ($quantity <= $available_quantity) {
                     // Update stock quantity
                     $new_quantity = $available_quantity - $quantity;
-                    $stmt = $conn->prepare("UPDATE stocks SET quantity = ? WHERE stock_name = ?");
-                    $stmt->bind_param("is", $new_quantity, $stock_name);
+                    
+                    if ($new_quantity === 0) {
+                        $rack_number = 0; // Set rack number to 0 if quantity is 0
+                    }
+
+                    $stmt = $conn->prepare("UPDATE stocks SET quantity = ?, rack_number = ? WHERE stock_name = ?");
+                    $stmt->bind_param("iis", $new_quantity, $rack_number, $stock_name);
                     $stmt->execute();
 
                     // Record the transaction

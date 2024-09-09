@@ -58,7 +58,8 @@
         }
 
         select,
-        input[type="number"] {
+        input[type="number"],
+        input[type="text"] {
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -137,26 +138,25 @@
         $message = '';
         $stocks = [];
 
-        // Fetch stocks for the dropdown
+        // Establish database connection
         $conn = getDbConnection();
-        $sql = "SELECT stock_name FROM stocks";
+
+        // Fetch stocks and rack numbers for the dropdown
+        $sql = "SELECT stock_name, rack_number FROM stocks";
         $result = $conn->query($sql);
 
         if ($result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
-                $stocks[] = $row['stock_name'];
+                $stocks[] = $row;
             }
         }
-        closeDbConnection($conn);
 
         // Handle form submission
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Retrieve and sanitize form data
             $stock_name = htmlspecialchars($_POST['stock_name']);
             $quantity = (int)$_POST['quantity'];
-
-            // Establish database connection
-            $conn = getDbConnection();
+            $rack_number = htmlspecialchars($_POST['rack_number']); // Editable field
 
             // Check if the stock exists
             $stmt = $conn->prepare("SELECT quantity FROM stocks WHERE stock_name = ?");
@@ -165,15 +165,15 @@
             $result = $stmt->get_result();
 
             if ($result->num_rows > 0) {
-                // Stock exists, update the quantity
+                // Stock exists, update the quantity and rack number
                 $row = $result->fetch_assoc();
                 $new_quantity = $row['quantity'] + $quantity;
 
-                $stmt = $conn->prepare("UPDATE stocks SET quantity = ? WHERE stock_name = ?");
-                $stmt->bind_param("is", $new_quantity, $stock_name);
+                $stmt = $conn->prepare("UPDATE stocks SET quantity = ?, rack_number = ? WHERE stock_name = ?");
+                $stmt->bind_param("iis", $new_quantity, $rack_number, $stock_name);
                 $stmt->execute();
 
-                // Record the transaction
+                // Record the transaction without rack number
                 $stmt = $conn->prepare("INSERT INTO transactions (type, stock_name, quantity) VALUES (?, ?, ?)");
                 $type = 'Buy';
                 $stmt->bind_param("ssi", $type, $stock_name, $quantity);
@@ -182,11 +182,11 @@
                 $message = 'Stock purchased successfully!';
             } else {
                 // Stock does not exist, insert a new record
-                $stmt = $conn->prepare("INSERT INTO stocks (stock_name, quantity) VALUES (?, ?)");
-                $stmt->bind_param("si", $stock_name, $quantity);
+                $stmt = $conn->prepare("INSERT INTO stocks (stock_name, quantity, rack_number) VALUES (?, ?, ?)");
+                $stmt->bind_param("sis", $stock_name, $quantity, $rack_number);
                 $stmt->execute();
 
-                // Record the transaction
+                // Record the transaction without rack number
                 $stmt = $conn->prepare("INSERT INTO transactions (type, stock_name, quantity) VALUES (?, ?, ?)");
                 $type = 'Buy';
                 $stmt->bind_param("ssi", $type, $stock_name, $quantity);
@@ -194,10 +194,10 @@
 
                 $message = 'Stock purchased and added successfully!';
             }
-
-            // Close the database connection
-            closeDbConnection($conn);
         }
+
+        // Close the database connection
+        closeDbConnection($conn);
         ?>
 
         <!-- Display the message -->
@@ -208,20 +208,33 @@
         <!-- Form to submit stock purchase -->
         <form action="buy_stock.php" method="post">
             <label for="stock_name">Select Stock:</label>
-            <select id="stock_name" name="stock_name" required>
+            <select id="stock_name" name="stock_name" required onchange="updateRackNumber()">
                 <option value="" disabled selected>Select a stock</option>
                 <?php foreach ($stocks as $stock): ?>
-                    <option value="<?php echo htmlspecialchars($stock); ?>">
-                        <?php echo htmlspecialchars($stock); ?>
+                    <option value="<?php echo htmlspecialchars($stock['stock_name']); ?>" data-rack="<?php echo htmlspecialchars($stock['rack_number']); ?>">
+                        <?php echo htmlspecialchars($stock['stock_name']); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
             <br>
-            <label for="quantity">Quantity:</label>
-            <input type="number" id="quantity" name="quantity" value="" required>
+            <label for="rack_number">Rack Number:</label>
+            <input type="text" id="rack_number" name="rack_number" value="" />
             <br>
-            <input type="submit" value="Buy Stock">
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" name="quantity" value="" required />
+            <br>
+            <input type="submit" value="Buy Stock" />
         </form>
     </div>
+
+    <script>
+        function updateRackNumber() {
+            const select = document.getElementById('stock_name');
+            const rackInput = document.getElementById('rack_number');
+            const selectedOption = select.options[select.selectedIndex];
+            const rackNumber = selectedOption.getAttribute('data-rack');
+            rackInput.value = rackNumber;
+        }
+    </script>
 </body>
 </html>

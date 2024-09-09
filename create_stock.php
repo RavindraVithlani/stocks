@@ -142,6 +142,7 @@
         // Initialize variables
         $stock_name = '';
         $quantity = '';
+        $rack_number = '';
         $message = '';
         $error_message = '';
 
@@ -150,10 +151,11 @@
             // Retrieve and sanitize form data
             $stock_name = htmlspecialchars($_POST['stock_name']);
             $quantity = (int)$_POST['quantity'];
+            $rack_number = (int)$_POST['rack_number'];
 
             // Validate input
-            if (empty($stock_name) || $quantity < 0) {
-                $error_message = 'Please provide a valid stock name and a non-negative quantity.';
+            if (empty($stock_name) || $quantity < 0 || $rack_number < 0) {
+                $error_message = 'Please provide a valid stock name, non-negative quantity, and rack number.';
             } else {
                 // Establish database connection
                 $conn = getDbConnection();
@@ -168,8 +170,8 @@
                     $error_message = 'Stock already exists.';
                 } else {
                     // Insert the new stock
-                    $stmt = $conn->prepare("INSERT INTO stocks (stock_name, quantity) VALUES (?, ?)");
-                    $stmt->bind_param("si", $stock_name, $quantity);
+                    $stmt = $conn->prepare("INSERT INTO stocks (stock_name, quantity, rack_number) VALUES (?, ?, ?)");
+                    $stmt->bind_param("sii", $stock_name, $quantity, $rack_number);
                     if ($stmt->execute()) {
                         $message = 'Stock created successfully!';
                     } else {
@@ -200,6 +202,9 @@
             <br>
             <label for="quantity">Initial Quantity:</label>
             <input type="number" id="quantity" name="quantity" value="<?php echo htmlspecialchars($quantity); ?>" required>
+            <br>
+            <label for="rack_number">Rack Number:</label>
+            <input type="number" id="rack_number" name="rack_number" value="<?php echo htmlspecialchars($rack_number); ?>" required>
             <br>
             <input type="submit" value="Create Stock">
         </form>
