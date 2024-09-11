@@ -198,13 +198,13 @@
         <!-- Form to create a new stock -->
         <form action="create_stock.php" method="post">
             <label for="stock_name">Stock Name:</label>
-            <input type="text" id="stock_name" name="stock_name" value="<?php echo htmlspecialchars($stock_name); ?>" required>
+            <input type="text" id="stock_name" name="stock_name" value="" required>
             <br>
             <label for="quantity">Initial Quantity:</label>
-            <input type="number" id="quantity" name="quantity" value="<?php echo htmlspecialchars($quantity); ?>" required>
+            <input type="number" id="quantity" name="quantity" value="" required>
             <br>
             <label for="rack_number">Rack Number:</label>
-            <input type="number" id="rack_number" name="rack_number" value="<?php echo htmlspecialchars($rack_number); ?>" required>
+            <input type="number" id="rack_number" name="rack_number" value="" required>
             <br>
             <input type="submit" value="Create Stock">
         </form>
